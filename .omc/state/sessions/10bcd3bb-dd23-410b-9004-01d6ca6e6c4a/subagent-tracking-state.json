@@ -1,0 +1,26 @@
+{
+  "agents": [
+    {
+      "agent_id": "ae5ad88192c8fe2f4",
+      "agent_type": "unknown",
+      "started_at": "2026-07-20T08:56:57.297Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-07-20T08:56:57.297Z",
+      "duration_ms": 0
+    },
+    {
+      "agent_id": "a1f3d49b312e8d923",
+      "agent_type": "unknown",
+      "started_at": "2026-07-20T08:57:34.709Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-07-20T08:57:34.709Z",
+      "duration_ms": 0
+    }
+  ],
+  "total_spawned": 0,
+  "total_completed": 2,
+  "total_failed": 0,
+  "last_updated": "2026-07-20T08:57:34.944Z"
+}

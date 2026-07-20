@@ -1,0 +1,69 @@
+name: Task
+description: Use this template for non-bug, non-feature tasks.
+title: "[TASK] "
+labels: ["task", "triage"]
+type: task
+assignees: [deadhand777]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill in the task details below. Be concise in the summary and provide acceptance criteria so the task can be closed reliably.
+  - type: input
+    id: summary
+    attributes:
+      label: Short summary
+      description: One-line summary of the task.
+      placeholder: Improve operational runbook for loan pipeline
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: Background / Why
+      description: Context, why this matters, links to related issues or docs.
+      placeholder: Describe context and related resources.
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Goal / Acceptance criteria
+      description: Clear, testable criteria. Use checkboxes in the issue body if helpful.
+      placeholder: "Criterion 1\nCriterion 2\nCriterion X"
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope / Out of scope
+      description: What is included and explicitly excluded.
+      placeholder: "In scope: ...\nOut of scope: ..."
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach / Steps
+      description: High-level plan or checklist of implementation steps.
+  - type: input
+    id: target_date
+    attributes:
+      label: Target / ETA
+      description: "Target completion date (optional, format: YYYY-MM-DD)"
+      placeholder: "2025-12-01"
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: Business priority
+      options:
+        - High
+        - Medium
+        - Low
+      default: 2
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: "Person or role responsible for completion / ticket sponsor"
+      placeholder: "@username or team-name"
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / Attachments
+      description: Attach files, links, or additional info

@@ -1,0 +1,34 @@
+# os
+.DS_Store
+
+# editors
+.idea/
+.vscode/
+
+# code intelligence
+.codegraph/
+
+# python
+*.egg-info/
+*.py[cod]
+.venv/
+.venvs/
+/build/
+/dist/
+
+# tools
+.coverage*
+/.pdm-build/
+/htmlcov/
+/site/
+uv.lock
+
+# cache
+.cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+
+# local
+local/
+docs/superpowers/

@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier.
+_commit: 1.12.1
+_src_path: gh:pawamoy/copier-uv
+author_email: 47255277+deadhand777@users.noreply.github.com
+author_fullname: deadhand777
+author_username: deadhand777
+copyright_date: '2026'
+copyright_holder: deadhand777
+copyright_holder_email: 47255277+deadhand777@users.noreply.github.com
+copyright_license: MIT
+project_description: Contact center app
+project_name: contact-center
+python_package_command_line_name: contact-center
+python_package_distribution_name: contact-center
+python_package_import_name: contact_center
+repository_name: contact-center
+repository_namespace: deadhand777
+repository_provider: github.com
+

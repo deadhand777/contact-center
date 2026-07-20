@@ -1,0 +1,131 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "enableLogging",
+  "Actions": [
+    {
+      "Identifier": "enableLogging",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Transitions": {
+        "NextAction": "greeting",
+        "Errors": [],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "greeting",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "Willkommen bei der Musterbank. Wie kann ich Ihnen helfen?"
+      },
+      "Transitions": {
+        "NextAction": "lexInput",
+        "Errors": [
+          {
+            "NextAction": "toQueue",
+            "ErrorType": "NoMatchingError"
+          }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "lexInput",
+      "Type": "ConnectParticipantWithLexBot",
+      "Parameters": {
+        "LexV2Bot": {
+          "AliasArn": "%%LEX_ALIAS_ARN%%"
+        },
+        "Text": "Wie kann ich Ihnen helfen?",
+        "LexSessionAttributes": {
+          "customer_id": "$.Attributes.customer_id"
+        }
+      },
+      "Transitions": {
+        "NextAction": "checkEscalate",
+        "Errors": [
+          {
+            "NextAction": "toQueue",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "toQueue",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "checkEscalate",
+      "Type": "Compare",
+      "Parameters": {
+        "ComparisonValue": "$.Lex.SessionAttributes.escalate"
+      },
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Conditions": [
+          {
+            "NextAction": "toQueue",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "true"
+              ]
+            }
+          }
+        ],
+        "Errors": [
+          {
+            "NextAction": "disconnect",
+            "ErrorType": "NoMatchingCondition"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "toQueue",
+      "Type": "UpdateContactTargetQueue",
+      "Parameters": {
+        "QueueId": "%%QUEUE_ARN%%"
+      },
+      "Transitions": {
+        "NextAction": "transfer",
+        "Errors": [
+          {
+            "NextAction": "disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "transfer",
+      "Type": "TransferContactToQueue",
+      "Parameters": {},
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Errors": [
+          {
+            "NextAction": "disconnect",
+            "ErrorType": "QueueAtCapacity"
+          },
+          {
+            "NextAction": "disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "disconnect",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ]
+}

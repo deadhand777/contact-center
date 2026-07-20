@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "contactcenter",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:created-by": "agentcore-cli",
+    "agentcore:project-name": "contactcenter"
+  },
+  "runtimes": [
+    {
+      "name": "knowledge_agent",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/knowledge_agent/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP"
+    }
+  ],
+  "memories": [],
+  "knowledgeBases": [],
+  "credentials": [],
+  "evaluators": [],
+  "onlineEvalConfigs": [],
+  "agentCoreGateways": [
+    {
+      "name": "contact-center-banking",
+      "protocolType": "MCP",
+      "description": "Tool boundary for core-banking lookups (least-privilege Lambda targets)",
+      "authorizerType": "AWS_IAM",
+      "targets": [
+        {
+          "name": "balance",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:eu-central-1:014722188736:function:ContactCenterKnowledge-BalanceFunctionCEE51A7C-6oYCHGw8msNF",
+            "toolSchemaFile": "tool-schemas/balance.json"
+          }
+        }
+      ]
+    }
+  ],
+  "policyEngines": [],
+  "configBundles": [],
+  "abTests": [],
+  "harnesses": [],
+  "datasets": [],
+  "payments": []
+}

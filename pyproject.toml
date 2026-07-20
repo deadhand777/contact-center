@@ -1,0 +1,67 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "contact-center"
+description = "Contact center app"
+authors = [{name = "deadhand777", email = "47255277+deadhand777@users.noreply.github.com"}]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.13"
+dynamic = ["version"]
+dependencies = [
+    "boto3>=1.35",
+    "websocket-client>=1.8",
+]
+
+[project.urls]
+Homepage = "https://deadhand777.github.io/contact-center"
+Documentation = "https://deadhand777.github.io/contact-center"
+Changelog = "https://deadhand777.github.io/contact-center/changelog"
+Repository = "https://github.com/deadhand777/contact-center"
+Issues = "https://github.com/deadhand777/contact-center/issues"
+Discussions = "https://github.com/deadhand777/contact-center/discussions"
+
+[project.scripts]
+contact-center = "contact_center:main"
+
+[tool.pdm.version]
+source = "call"
+getter = "scripts.get_version:get_version"
+
+[dependency-groups]
+maintain = [
+    "git-changelog>=2.9",
+    "yore>=0.4.7",
+]
+ci = [
+    "duty>=1.9",
+    "pytest>=9.1",
+    "pytest-cov>=7.1",
+    "pytest-randomly>=4.1",
+    "pytest-xdist>=3.8",
+    "ruff>=0.15",
+    "ty>=0.0.61",
+    "types-markdown>=3.10",
+    "types-pyyaml>=6.0",
+]
+docs = [
+    "ghp-import>=2.1",
+    "markdown-callouts>=0.4",
+    "markdown-exec>=1.12",
+    "mkdocstrings[python]>=1.0",
+    "zensical>=0.0.51",
+]
+
+[tool.uv]
+default-groups = ["maintain", "ci", "docs"]
+
+[tool.uv.workspace]
+members = [
+    "contactcenter/app/*",
+]
+
+[tool.ty.src]
+exclude = ["contactcenter/"]

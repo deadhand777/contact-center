@@ -1,0 +1,16 @@
+[
+  {
+    "name": "get_account_balance",
+    "description": "Look up all accounts and balances for one bank customer by customer id.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "description": "Customer id in the format KND-XXXX"
+        }
+      },
+      "required": ["customer_id"]
+    }
+  }
+]
