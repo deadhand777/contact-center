@@ -1,0 +1,12 @@
+{
+  "KND-1001": [
+    { "iban_masked": "DE**5001", "type": "Girokonto", "balance": "2.543,17", "currency": "EUR" },
+    { "iban_masked": "DE**5002", "type": "Tagesgeld", "balance": "15.000,00", "currency": "EUR" }
+  ],
+  "KND-1002": [
+    { "iban_masked": "DE**5003", "type": "Girokonto", "balance": "-127,45", "currency": "EUR" }
+  ],
+  "KND-1003": [
+    { "iban_masked": "DE**5004", "type": "Girokonto", "balance": "890,00", "currency": "EUR" }
+  ]
+}
