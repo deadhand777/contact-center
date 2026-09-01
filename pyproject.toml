@@ -1,5 +1,5 @@
 [build-system]
-requires = ["pdm-backend"]
+requires = ["pdm-backend>=2.4.9"]
 build-backend = "pdm.backend"
 
 [project]
@@ -12,8 +12,8 @@ readme = "README.md"
 requires-python = ">=3.13"
 dynamic = ["version"]
 dependencies = [
-    "boto3>=1.35",
-    "websocket-client>=1.8",
+    "boto3>=1.43.85",
+    "websocket-client>=1.9.2",
 ]
 
 [project.urls]
@@ -33,26 +33,26 @@ getter = "scripts.get_version:get_version"
 
 [dependency-groups]
 maintain = [
-    "git-changelog>=2.9",
+    "git-changelog>=2.9.7",
     "yore>=0.4.7",
 ]
 ci = [
     "duty>=1.9",
-    "pytest>=9.1",
+    "pytest>=9.1.1",
     "pytest-cov>=7.1",
     "pytest-randomly>=4.1",
     "pytest-xdist>=3.8",
-    "ruff>=0.15",
-    "ty>=0.0.61",
-    "types-markdown>=3.10",
-    "types-pyyaml>=6.0",
+    "ruff>=0.15.22,<0.16",
+    "ty>=0.0.77",
+    "types-markdown>=3.10.2.20260712",
+    "types-pyyaml>=6.0.12.20260815",
 ]
 docs = [
     "ghp-import>=2.1",
     "markdown-callouts>=0.4",
-    "markdown-exec>=1.12",
-    "mkdocstrings[python]>=1.0",
-    "zensical>=0.0.51",
+    "markdown-exec>=1.12.3",
+    "mkdocstrings[python]>=1.0.6",
+    "zensical>=0.0.57",
 ]
 
 [tool.uv]

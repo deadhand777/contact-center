@@ -42,7 +42,7 @@ export class KnowledgeStack extends cdk.Stack {
         nonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT'],
       },
     });
-    vectorIndex.addDependency(vectorBucket);
+    vectorIndex.addResourceDependency(vectorBucket);
 
     const kbRole = new iam.Role(this, 'KnowledgeBaseRole', {
       assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
