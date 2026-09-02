@@ -55,7 +55,6 @@ class ConnectConversation:
         self._connection_token = connection_token
         self._participant = participant
         self.socket = socket
-        self._seen: set[str] = set()
 
     @classmethod
     def start(
