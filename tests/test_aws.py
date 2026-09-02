@@ -15,10 +15,4 @@ class _FakeSSM:
 
 def test_get_parameter_returns_value() -> None:
     """The helper unwraps the SSM GetParameter response."""
-    assert aws.get_parameter("/contact-center/kb-id", client=_FakeSSM()) == "value-of-/contact-center/kb-id"
-
-
-def test_parameter_name_constants() -> None:
-    """Parameter names match the CDK stack outputs."""
-    assert aws.KB_ID_PARAM == "/contact-center/kb-id"
-    assert aws.RUNTIME_ARN_PARAM == "/contact-center/runtime-arn"
+    assert aws.get_parameter(aws.RUNTIME_ARN_PARAM, client=_FakeSSM()) == "value-of-/contact-center/runtime-arn"

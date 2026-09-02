@@ -27,7 +27,6 @@ def _param(name: str, default: str | None = None) -> str | None:
 KB_ID = _required_param("/contact-center/kb-id")
 GUARDRAIL_ID = _required_param("/contact-center/guardrail-id")
 GUARDRAIL_VERSION = _required_param("/contact-center/guardrail-version")
-BALANCE_FN_ARN = _param("/contact-center/balance-fn-arn")
 GATEWAY_URL = _param("/contact-center/gateway-url")
 
 
