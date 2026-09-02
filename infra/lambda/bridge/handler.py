@@ -30,7 +30,6 @@ _RUNTIME_ARN: str | None = None
 
 _FALLBACK = {
     "answer": "Es tut mir leid, es gibt gerade ein technisches Problem. Ich verbinde Sie mit einer Mitarbeiterin oder einem Mitarbeiter.",
-    "escalate": "true",
     "reason": "Systemfehler",
 }
 

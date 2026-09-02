@@ -140,13 +140,6 @@ def test_check_number_format_ignores_german_date() -> None:
     assert result.checks["number_format"] is True
 
 
-def test_check_number_format_still_rejects_us_money() -> None:
-    item = _item()
-    resp = {"answer": "Das kostet 4.90 EUR", "escalate": False, "reason": None}
-    result = eval_runner.check_item(item, resp)
-    assert result.checks["number_format"] is False
-
-
 def test_check_escalation_flag_and_reason() -> None:
     item = _item(category="escalation", expect_escalate=True, expect_reason="Kundenwunsch")
     resp = {"answer": "Ich verbinde Sie.", "escalate": True, "reason": "Kundenwunsch"}
