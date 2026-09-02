@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import os
 import time
 
@@ -32,61 +31,25 @@ def clients() -> dict:
     }
 
 
-def _chat_turn(clients: dict, question: str, customer_id: str = "KND-1001", timeout: float = 90.0) -> tuple[list[str], bool, str]:
-    """Run one question through Connect; return (new_messages, transferred, contact_id).
-
-    The flow's Lex input block arms asynchronously; a message sent before it
-    listens is silently dropped. So we first drain and settle the initial
-    transcript (mirrors `connect_chat._drain`'s settle=3.0s pattern) before
-    sending, then only report messages that arrive after the send. The Lex
-    block re-emits its "Wie kann ich Ihnen helfen?" prompt around answers on
-    loop turns, so that prompt text is ignored when deciding the turn is done.
-    """
-    session = connect_chat.start_session(
+def _chat_turn(
+    clients: dict,
+    question: str,
+    customer_id: str = "KND-1001",
+    timeout: float = 90.0,
+) -> tuple[list[str], bool, str]:
+    """Run one question through Connect; return messages, transfer state, and contact id."""
+    with connect_chat.ConnectConversation.start(
         customer_id,
         connect=clients["connect"],
         participant=clients["participant"],
         instance_id=clients["instance_id"],
         flow_id=clients["flow_id"],
-    )
-    try:
-        seen: set[str] = set()
-        messages: list[str] = []
-        transferred = False
+    ) as conversation:
+        conversation.wait()
+        conversation.send(question)
+        result = conversation.wait(timeout=timeout)
+        return list(result.messages), result.transferred, conversation.contact_id
 
-        settle_deadline = time.monotonic() + 45.0
-        last_new: float | None = None
-        while time.monotonic() < settle_deadline:
-            events = connect_chat.poll_events(session, participant=clients["participant"], seen=seen)
-            if events:
-                last_new = time.monotonic()
-            for kind, text in events:
-                if kind == "message":
-                    messages.append(text)
-                elif kind == "transfer":
-                    transferred = True
-            if messages and last_new is not None and time.monotonic() - last_new >= 3.0:
-                break
-            time.sleep(1)
-
-        pre_send_count = len(messages)
-        connect_chat.send(session, question, participant=clients["participant"])
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            for kind, text in connect_chat.poll_events(session, participant=clients["participant"], seen=seen):
-                if kind == "message":
-                    messages.append(text)
-                elif kind == "transfer":
-                    transferred = True
-            new_messages = messages[pre_send_count:]
-            if transferred or any(m for m in new_messages if m and "Wie kann ich Ihnen helfen" not in m):
-                break
-            time.sleep(1)
-        return messages[pre_send_count:], transferred, session.contact_id
-    finally:
-        if session.socket is not None:
-            with contextlib.suppress(Exception):
-                session.socket.close()
 
 
 def test_balance_through_connect(clients: dict) -> None:

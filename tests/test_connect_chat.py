@@ -184,21 +184,13 @@ def test_context_manager_closes_socket_and_suppresses_failures(error: Exception 
     assert socket.closed is True
 
 
-def test_poll_events_returns_new_agent_messages_and_transfer() -> None:
-    """poll_events yields unseen agent messages and transfer events, skipping customer echoes."""
-    items = [
-        {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "CUSTOMER", "Content": "hi"},
-        {"Id": "2", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
-        {"Id": "3", "Type": "EVENT", "ContentType": "application/vnd.amazonaws.connect.event.transfer.succeeded"},
-    ]
-    participant = _FakeParticipant(items)
-    session = connect_chat.ChatSession(contact_id="c", connection_token="t")  # noqa: S106
-    seen: set[str] = set()
-    events = connect_chat.poll_events(session, participant=participant, seen=seen)
-    assert ("message", "Willkommen") in events
-    assert ("transfer", "") in events
-    assert all(kind != "message" or text != "hi" for kind, text in events)
-    assert connect_chat.poll_events(session, participant=participant, seen=seen) == []
+def test_print_turn_preserves_messages_and_terminal_notices(capsys: pytest.CaptureFixture[str]) -> None:
+    keep_going = connect_chat._print_turn(
+        connect_chat.TurnResult(messages=("Antwort",), transferred=True),
+    )
+
+    assert keep_going is False
+    assert capsys.readouterr().out == "Antwort\n⚠ Chat wurde an die Warteschlange übergeben.\n"
 
 
 def test_flow_id_extracted_from_arn(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -211,12 +203,12 @@ def test_flow_id_extracted_from_arn(monkeypatch: pytest.MonkeyPatch) -> None:
 
     captured: dict = {}
 
-    def _fake_start_session(_customer_id: str, **kwargs: object) -> connect_chat.ChatSession:
+    def _fake_start(_cls: object, _customer_id: str, **kwargs: object) -> connect_chat.ConnectConversation:
         captured.update(kwargs)
         raise SystemExit(0)
 
     monkeypatch.setattr(connect_chat.aws, "get_parameter", _param)
-    monkeypatch.setattr(connect_chat, "start_session", _fake_start_session)
+    monkeypatch.setattr(connect_chat.ConnectConversation, "start", classmethod(_fake_start))
     monkeypatch.setattr(connect_chat.boto3, "client", lambda *a, **k: object())
     with pytest.raises(SystemExit):
         connect_chat.run_connect_chat("hi")
