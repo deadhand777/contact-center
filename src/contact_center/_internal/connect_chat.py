@@ -39,6 +39,16 @@ def _open_chat_socket(url: str) -> websocket.WebSocket:
     return socket
 
 
+@dataclass(frozen=True)
+class TurnResult:
+    """New customer-visible output and terminal state from one wait."""
+
+    messages: tuple[str, ...]
+    transferred: bool = False
+    ended: bool = False
+    timed_out: bool = False
+
+
 class ConnectConversation:
     """One Amazon Connect chat conversation and its owned transport state."""
 
@@ -55,6 +65,7 @@ class ConnectConversation:
         self._connection_token = connection_token
         self._participant = participant
         self.socket = socket
+        self._seen: set[str] = set()
 
     @classmethod
     def start(
@@ -108,6 +119,42 @@ class ConnectConversation:
         if self.socket is not None:
             with contextlib.suppress(Exception):
                 self.socket.close()
+
+    def wait(self, *, timeout: float = 45.0, settle: float = 3.0) -> TurnResult:
+        """Wait for new transcript output to settle or reach a terminal state."""
+        deadline = time.monotonic() + timeout
+        messages: list[str] = []
+        last_new: float | None = None
+        while time.monotonic() < deadline:
+            transcript = self._participant.get_transcript(ConnectionToken=self._connection_token)
+            new_items: list[dict[str, Any]] = []
+            for item in transcript.get("Transcript", []):
+                item_id = item.get("Id", "")
+                if item_id in self._seen:
+                    continue
+                self._seen.add(item_id)
+                new_items.append(item)
+            transferred = False
+            ended = False
+            relevant_event = False
+            for item in new_items:
+                if item.get("Type") == "MESSAGE" and item.get("ParticipantRole") in {"SYSTEM", "AGENT"}:
+                    messages.append(item.get("Content", ""))
+                    relevant_event = True
+                elif item.get("Type") == "EVENT" and item.get("ContentType") == _TRANSFER_EVENT:
+                    transferred = True
+                    relevant_event = True
+                elif item.get("Type") == "EVENT" and item.get("ContentType") == _ENDED_EVENT:
+                    ended = True
+                    relevant_event = True
+            if relevant_event:
+                last_new = time.monotonic()
+            if transferred or ended:
+                return TurnResult(tuple(messages), transferred=transferred, ended=ended)
+            if last_new is not None and time.monotonic() - last_new >= settle:
+                return TurnResult(tuple(messages))
+            time.sleep(1)
+        return TurnResult(tuple(messages), timed_out=True)
 
 
 def start_session(

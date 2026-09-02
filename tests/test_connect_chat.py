@@ -40,7 +40,7 @@ class _FakeParticipant:
         return {}
 
     def get_transcript(self, **_kwargs: Any) -> dict:
-        """Return the scripted transcript."""
+        """Return the current scripted transcript."""
         return {"Transcript": self.items}
 
 
@@ -53,6 +53,67 @@ class _FakeSocket:
         self.closed = True
         if self._error is not None:
             raise self._error
+
+
+def _conversation(items: list[dict]) -> tuple[connect_chat.ConnectConversation, _FakeParticipant]:
+    participant = _FakeParticipant(items)
+    conversation = connect_chat.ConnectConversation(
+        contact_id="contact-1",
+        connection_token="ctoken",  # noqa: S106
+        participant=participant,
+    )
+    return conversation, participant
+
+
+def test_wait_returns_ordered_messages_after_settle() -> None:
+    conversation, _ = _conversation([
+        {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "CUSTOMER", "Content": "hi"},
+        {"Id": "2", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
+        {"Id": "3", "Type": "MESSAGE", "ParticipantRole": "AGENT", "Content": "Wie kann ich helfen?"},
+    ])
+
+    result = conversation.wait(settle=0)
+
+    assert result == connect_chat.TurnResult(messages=("Willkommen", "Wie kann ich helfen?"))
+
+
+def test_wait_owns_transcript_cursor_across_turns() -> None:
+    conversation, participant = _conversation([
+        {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
+    ])
+    assert conversation.wait(settle=0).messages == ("Willkommen",)
+    participant.items.append(
+        {"Id": "2", "Type": "MESSAGE", "ParticipantRole": "AGENT", "Content": "Antwort"},
+    )
+
+    assert conversation.wait(settle=0).messages == ("Antwort",)
+
+
+@pytest.mark.parametrize(
+    ("content_type", "expected"),
+    [
+        (
+            "application/vnd.amazonaws.connect.event.transfer.succeeded",
+            connect_chat.TurnResult(messages=(), transferred=True),
+        ),
+        (
+            "application/vnd.amazonaws.connect.event.chat.ended",
+            connect_chat.TurnResult(messages=(), ended=True),
+        ),
+    ],
+)
+def test_wait_returns_terminal_state_immediately(content_type: str, expected: object) -> None:
+    conversation, _ = _conversation([
+        {"Id": "1", "Type": "EVENT", "ContentType": content_type},
+    ])
+
+    assert conversation.wait() == expected
+
+
+def test_wait_reports_timeout() -> None:
+    conversation, _ = _conversation([])
+
+    assert conversation.wait(timeout=0) == connect_chat.TurnResult(messages=(), timed_out=True)
 
 
 def test_start_conversation_passes_customer_attribute() -> None:
