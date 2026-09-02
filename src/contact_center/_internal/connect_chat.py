@@ -12,7 +12,7 @@ import contextlib
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Self
 
 import boto3
 import websocket
@@ -37,6 +37,78 @@ def _open_chat_socket(url: str) -> websocket.WebSocket:
     socket = websocket.create_connection(url, timeout=10)
     socket.send('{"topic":"aws/subscribe","content":{"topics":["aws/chat"]}}')
     return socket
+
+
+class ConnectConversation:
+    """One Amazon Connect chat conversation and its owned transport state."""
+
+    def __init__(
+        self,
+        *,
+        contact_id: str,
+        connection_token: str,
+        participant: Any,
+        socket: Any = None,
+    ) -> None:
+        """Store the participant connection and optional websocket."""
+        self.contact_id = contact_id
+        self._connection_token = connection_token
+        self._participant = participant
+        self.socket = socket
+        self._seen: set[str] = set()
+
+    @classmethod
+    def start(
+        cls,
+        customer_id: str,
+        *,
+        connect: Any,
+        participant: Any,
+        instance_id: str,
+        flow_id: str,
+    ) -> ConnectConversation:
+        """Start a Connect contact and open its participant connection."""
+        started = connect.start_chat_contact(
+            InstanceId=instance_id,
+            ContactFlowId=flow_id,
+            Attributes={"customer_id": customer_id},
+            ParticipantDetails={"DisplayName": "PoC Customer"},
+            ClientToken=uuid.uuid4().hex,
+        )
+        connection = participant.create_participant_connection(
+            ParticipantToken=started["ParticipantToken"],
+            Type=["WEBSOCKET", "CONNECTION_CREDENTIALS"],
+        )
+        websocket_info = connection.get("Websocket")
+        socket = _open_chat_socket(websocket_info["Url"]) if websocket_info else None
+        return cls(
+            contact_id=started["ContactId"],
+            connection_token=connection["ConnectionCredentials"]["ConnectionToken"],
+            participant=participant,
+            socket=socket,
+        )
+
+    def __enter__(self) -> Self:
+        """Return this open conversation."""
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        """Close this conversation when leaving its context."""
+        self.close()
+
+    def send(self, text: str) -> None:
+        """Send one customer message into the chat."""
+        self._participant.send_message(
+            ConnectionToken=self._connection_token,
+            ContentType="text/plain",
+            Content=text,
+        )
+
+    def close(self) -> None:
+        """Close the websocket, suppressing cleanup failures."""
+        if self.socket is not None:
+            with contextlib.suppress(Exception):
+                self.socket.close()
 
 
 def start_session(

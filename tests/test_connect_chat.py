@@ -44,21 +44,35 @@ class _FakeParticipant:
         return {"Transcript": self.items}
 
 
-def test_start_session_passes_customer_attribute() -> None:
-    """start_session forwards customer_id as a contact attribute."""
+class _FakeSocket:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.closed = False
+        self._error = error
+
+    def close(self) -> None:
+        self.closed = True
+        if self._error is not None:
+            raise self._error
+
+
+def test_start_conversation_passes_customer_attribute() -> None:
     connect = _FakeConnect()
-    session = connect_chat.start_session(
-        "KND-1001", connect=connect, participant=_FakeParticipant(), instance_id="inst", flow_id="flow",
+    participant = _FakeParticipant()
+
+    conversation = connect_chat.ConnectConversation.start(
+        "KND-1001",
+        connect=connect,
+        participant=participant,
+        instance_id="inst",
+        flow_id="flow",
     )
-    assert session.contact_id == "contact-1"
-    assert session.connection_token == "ctoken"  # noqa: S105
+
+    assert conversation.contact_id == "contact-1"
     assert connect.calls[0]["Attributes"] == {"customer_id": "KND-1001"}
-    assert session.socket is None
+    assert conversation.socket is None
 
 
-def test_start_session_opens_websocket_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    """start_session opens the chat websocket when the response includes one."""
-
+def test_start_conversation_opens_websocket_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
     class _FakeParticipantWithSocket(_FakeParticipant):
         def create_participant_connection(self, **_kwargs: Any) -> dict:
             return {
@@ -66,23 +80,47 @@ def test_start_session_opens_websocket_when_present(monkeypatch: pytest.MonkeyPa
                 "Websocket": {"Url": "wss://x"},
             }
 
-    sentinel = object()
-    captured: dict = {}
+    socket = _FakeSocket()
+    monkeypatch.setattr(connect_chat, "_open_chat_socket", lambda _url: socket)
 
-    def _fake_open(url: str) -> object:
-        captured["url"] = url
-        return sentinel
-
-    monkeypatch.setattr(connect_chat, "_open_chat_socket", _fake_open)
-    session = connect_chat.start_session(
+    conversation = connect_chat.ConnectConversation.start(
         "KND-1001",
         connect=_FakeConnect(),
         participant=_FakeParticipantWithSocket(),
         instance_id="inst",
         flow_id="flow",
     )
-    assert session.socket is sentinel
-    assert captured["url"] == "wss://x"
+
+    assert conversation.socket is socket
+
+
+def test_conversation_sends_with_owned_connection() -> None:
+    participant = _FakeParticipant()
+    conversation = connect_chat.ConnectConversation(
+        contact_id="contact-1",
+        connection_token="ctoken",  # noqa: S106
+        participant=participant,
+    )
+
+    conversation.send("Hallo")
+
+    assert participant.sent == ["Hallo"]
+
+
+@pytest.mark.parametrize("error", [None, RuntimeError("close failed")])
+def test_context_manager_closes_socket_and_suppresses_failures(error: Exception | None) -> None:
+    socket = _FakeSocket(error)
+    conversation = connect_chat.ConnectConversation(
+        contact_id="contact-1",
+        connection_token="ctoken",  # noqa: S106
+        participant=_FakeParticipant(),
+        socket=socket,
+    )
+
+    with conversation as entered:
+        assert entered is conversation
+
+    assert socket.closed is True
 
 
 def test_poll_events_returns_new_agent_messages_and_transfer() -> None:
