@@ -33,6 +33,17 @@ _FALLBACK = {
     "reason": "Systemfehler",
 }
 
+_AGENT_REASONS: frozenset[str] = frozenset(
+    {
+        "Kundenwunsch",
+        "Sensibles Thema Kreditablehnung",
+        "Systemfehler Kontodienst",
+        "Kunde nicht identifiziert",
+        "Keine gesicherte Antwort möglich",
+    }
+)
+_RESPONSE_FIELDS = frozenset({"answer", "escalate", "reason"})
+
 
 def _runtime_arn() -> str:
     """Read the AgentCore runtime ARN from SSM once per container."""
@@ -45,6 +56,20 @@ def _runtime_arn() -> str:
         )
         _RUNTIME_ARN = ssm.get_parameter(Name="/contact-center/runtime-arn")["Parameter"]["Value"]
     return _RUNTIME_ARN
+
+
+def _is_valid_agent_response(data: object) -> bool:
+    """Return whether decoded runtime data matches the exact agent contract."""
+    if not isinstance(data, dict) or set(data) != _RESPONSE_FIELDS:
+        return False
+    answer = data["answer"]
+    escalate = data["escalate"]
+    reason = data["reason"]
+    if not isinstance(answer, str) or not answer.strip() or type(escalate) is not bool:
+        return False
+    if not escalate:
+        return reason is None
+    return isinstance(reason, str) and reason in _AGENT_REASONS
 
 
 def _response(
@@ -178,7 +203,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
         body = response["response"]
         raw = body.read() if hasattr(body, "read") else b"".join(body)
         data = json.loads(raw)
-        if not isinstance(data, dict) or "answer" not in data or not str(data["answer"]).strip():
+        if not _is_valid_agent_response(data):
             _log_turn(
                 session_id=runtime_session_id,
                 customer_id=customer_id,
@@ -188,8 +213,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
                 start=start,
             )
             return _fallback_response(session_attributes, intent_name)
-        escalate = data.get("escalate") is True
-        reason = str(data.get("reason") or "")
+        escalate = data["escalate"]
+        reason = data["reason"] or ""
         _log_turn(
             session_id=runtime_session_id,
             customer_id=customer_id,
@@ -201,7 +226,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
         return _response(
             session_attributes,
             intent_name,
-            answer=str(data["answer"]),
+            answer=data["answer"],
             escalate=escalate,
             reason=reason,
         )

@@ -6,10 +6,11 @@ import importlib.util
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
+
+from tests.contract_cases import INVALID_CONTRACT_PAYLOADS, VALID_CONTRACT_PAYLOADS
 
 _HANDLER_PATH = Path(__file__).parent.parent / "infra" / "lambda" / "bridge" / "handler.py"
 
@@ -64,6 +65,30 @@ def _lex_event(text: str, customer_id: str | None = "KND-1001") -> dict[str, Any
             "intent": {"name": "FallbackIntent", "state": "InProgress"},
         },
     }
+
+
+@pytest.mark.parametrize("payload", VALID_CONTRACT_PAYLOADS)
+def test_bridge_accepts_valid_agent_contract(payload: dict[str, object]) -> None:
+    """Every canonical valid agent response reaches the Lex adapter."""
+    module = _load_handler()
+    module._agentcore = _FakeRuntime(payload)
+    module._RUNTIME_ARN = "arn:runtime"
+    result = module.handler(_lex_event("Frage"), None)
+    expected_action = "Close" if payload["escalate"] else "ElicitIntent"
+    assert result["sessionState"]["dialogAction"] == {"type": expected_action}
+    assert result["messages"][0]["content"] == payload["answer"]
+
+
+@pytest.mark.parametrize("payload", INVALID_CONTRACT_PAYLOADS)
+def test_bridge_rejects_invalid_agent_contract(payload: dict[str, object]) -> None:
+    """Every canonical invalid agent response uses the bridge fallback."""
+    module = _load_handler()
+    module._agentcore = _FakeRuntime(payload)
+    module._RUNTIME_ARN = "arn:runtime"
+    result = module.handler(_lex_event("Frage"), None)
+    assert result["sessionState"]["dialogAction"] == {"type": "Close"}
+    assert result["sessionState"]["sessionAttributes"]["escalate"] == "true"
+    assert result["sessionState"]["sessionAttributes"]["reason"] == "Systemfehler"
 
 
 def test_answer_turn_maps_contract_to_elicit_intent() -> None:

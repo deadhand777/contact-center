@@ -15,8 +15,8 @@ graph TB
   Sup -->|"accounts / balances"| B["ask_banking_agent<br/>(banking.py)"]
   K --> R["retrieval.py<br/>KB query + [Quelle: …]"]
   B --> GW["Gateway MCP tool<br/>get_account_balance()"]
-  Sup --> Contract["parse_supervisor_output<br/>(contract.py)"]
-  Contract --> Out["{answer, escalate, reason}"]
+  Sup --> Contract["SupervisorResponse.from_supervisor_output<br/>(contract.py)"]
+  Contract --> Out["to_payload() / to_log_record()"]
 ```
 
 ## Files
@@ -27,7 +27,7 @@ graph TB
 | `knowledge.py` | `ask_knowledge_agent` — retrieval-augmented product/fee/condition answers |
 | `banking.py` | `ask_banking_agent` + the no-arg `get_account_balance()` tool; identity via `ContextVar` |
 | `retrieval.py` | Knowledge Base query; emits `[Quelle: <source>]` citation markers (code, not prompt) |
-| `contract.py` | `parse_supervisor_output` → `{answer, escalate, reason}`; `escalation_log_record` (PII-safe log) |
+| `contract.py` | `SupervisorResponse.from_supervisor_output` — strict validation with a fixed human-escalation fallback; `to_payload()` / `to_log_record()` projections |
 | `shared.py` | Model + config (fail-closed SSM reads) |
 
 ## Contracts (do not casually change)
