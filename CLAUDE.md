@@ -72,7 +72,11 @@ Good implementations:
 - pytest does NOT auto-discover `config/pytest.ini` from the repo root: direct runs need
   `uv run pytest -c config/pytest.ini`. Never create a root `pytest.ini` (rejected as drift-prone).
 - Live integration tests are double-gated: `-m integration` AND `RUN_INTEGRATION=1`.
-- If `python scripts/make ...` fails with "Failed to spawn: duty", prefix `PYTHON_VERSIONS=""`.
+- Tasks run against the default `.venv`: `PYTHON_VERSIONS` defaults to empty in
+  `scripts/make.py` (CI and `requires-python` only target 3.13). Setting it to a version list
+  requires `make setup` to have populated `.venvs/<version>` first — otherwise checks run in
+  an empty venv and `check-types` reports every third-party import as `unresolved-import`.
+  Never "fix" that by adding ignores: the venv is empty, the code is fine.
 - `contactcenter/` is outside ruff scope (duties.py PY_SRC_PATHS) and excluded from ty
   (`[tool.ty.src]` in pyproject.toml + config/ty.toml) — its deps live in the agent's own venv.
 - `uv.lock` is git-ignored (template choice) — don't try to commit it.

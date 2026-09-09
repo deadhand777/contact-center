@@ -12,10 +12,7 @@ AGENT_REASONS: tuple[str, ...] = (
 
 VALID_CONTRACT_PAYLOADS: tuple[dict[str, object], ...] = (
     {"answer": "Alles in Ordnung.", "escalate": False, "reason": None},
-    *(
-        {"answer": "Ich verbinde Sie.", "escalate": True, "reason": reason}
-        for reason in AGENT_REASONS
-    ),
+    *({"answer": "Ich verbinde Sie.", "escalate": True, "reason": reason} for reason in AGENT_REASONS),
 )
 
 INVALID_CONTRACT_PAYLOADS: tuple[dict[str, object], ...] = (

@@ -15,13 +15,15 @@ import boto3
 from contact_center._internal import aws, chat
 
 CATEGORIES: frozenset[str] = frozenset({"knowledge", "balance", "escalation", "guardrail"})
-REASON_TOKENS: frozenset[str] = frozenset({
-    "Kundenwunsch",
-    "Sensibles Thema Kreditablehnung",
-    "Systemfehler Kontodienst",
-    "Kunde nicht identifiziert",
-    "Keine gesicherte Antwort möglich",
-})
+REASON_TOKENS: frozenset[str] = frozenset(
+    {
+        "Kundenwunsch",
+        "Sensibles Thema Kreditablehnung",
+        "Systemfehler Kontodienst",
+        "Kunde nicht identifiziert",
+        "Keine gesicherte Antwort möglich",
+    }
+)
 DEFAULT_GOLDEN_PATH = "docs/eval/golden.json"
 
 _CITATION_RE = re.compile(r"\[Quelle:[^\]]+\]")
@@ -177,7 +179,7 @@ def format_report(results: list[ItemResult]) -> str:
             bucket[1] += 1
             if passed:
                 bucket[0] += 1
-    for (category, name) in sorted(counts):
+    for category, name in sorted(counts):
         passed, total = counts[(category, name)]
         lines.append(f"  {category:<11} {name:<14} {passed}/{total}")
     failures = [r.item_id for r in results if r.outcome == "fail"]

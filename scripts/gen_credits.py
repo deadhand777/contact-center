@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from collections import defaultdict
 from collections.abc import Iterable
 from importlib.metadata import distributions
@@ -9,7 +10,6 @@ from itertools import chain
 from pathlib import Path
 from textwrap import dedent
 
-import tomllib
 from jinja2 import StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 from packaging.requirements import Requirement

@@ -106,26 +106,6 @@ def _response(
     }
 
 
-def _log_record(
-    *,
-    session_id: str,
-    customer_id: str | None,
-    escalate: bool,
-    reason: str,
-    outcome: str,
-    latency_ms: int,
-) -> dict[str, Any]:
-    """Build a structured, PII-safe turn log record (no answer text)."""
-    return {
-        "session_id": session_id,
-        "customer_id": customer_id,
-        "escalate": escalate,
-        "reason": reason,
-        "outcome": outcome,
-        "latency_ms": latency_ms,
-    }
-
-
 def _fallback_response(session_attributes: dict[str, Any], intent_name: str) -> dict[str, Any]:
     """Build the Close escalation fallback response (fail toward human)."""
     return _response(
@@ -146,20 +126,17 @@ def _log_turn(
     outcome: str,
     start: float,
 ) -> None:
-    """Emit the structured turn log; guarded so a logging failure can never raise."""
+    """Emit the structured, PII-safe turn log (no answer text); never raises."""
     try:
-        latency_ms = int((time.monotonic() - start) * 1000)
         _LOGGER.info(
-            json.dumps(
-                _log_record(
-                    session_id=session_id,
-                    customer_id=customer_id,
-                    escalate=escalate,
-                    reason=reason,
-                    outcome=outcome,
-                    latency_ms=latency_ms,
-                )
-            )
+            json.dumps({
+                "session_id": session_id,
+                "customer_id": customer_id,
+                "escalate": escalate,
+                "reason": reason,
+                "outcome": outcome,
+                "latency_ms": int((time.monotonic() - start) * 1000),
+            })
         )
     except Exception:  # noqa: BLE001 — logging must never break the never-raise contract
         pass

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-PYTHON_VERSIONS = os.getenv("PYTHON_VERSIONS", "3.13 3.14").split()
+PYTHON_VERSIONS = os.getenv("PYTHON_VERSIONS", "").split()
 PYTHON_DEV = "3.13"
 
 

@@ -95,7 +95,9 @@ def run_chat(question: str | None = None, customer_id: str = "KND-1001") -> int:
     session_id = uuid.uuid4().hex + uuid.uuid4().hex[:8]
     if question is not None:
         print(  # noqa: T201
-            render(ask(question, runtime_arn=runtime_arn, session_id=session_id, client=client, customer_id=customer_id)),
+            render(
+                ask(question, runtime_arn=runtime_arn, session_id=session_id, client=client, customer_id=customer_id)
+            ),
         )
         return 0
     while True:  # pragma: no cover (interactive loop)

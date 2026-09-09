@@ -51,7 +51,6 @@ def _chat_turn(
         return list(result.messages), result.transferred, conversation.contact_id
 
 
-
 def test_balance_through_connect(clients: dict) -> None:
     """A balance question survives the whole Connect round trip."""
     start = time.monotonic()
@@ -84,7 +83,8 @@ def test_escalation_reaches_queue(clients: dict) -> None:
     queue_info: dict = {}
     while time.monotonic() < deadline and not queue_info:
         described = clients["connect"].describe_contact(
-            InstanceId=clients["instance_id"], ContactId=contact_id,
+            InstanceId=clients["instance_id"],
+            ContactId=contact_id,
         )
         queue_info = described.get("Contact", {}).get("QueueInfo") or {}
         if not queue_info:
