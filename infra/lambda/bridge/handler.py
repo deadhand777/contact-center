@@ -33,6 +33,17 @@ _FALLBACK = {
     "reason": "Systemfehler",
 }
 
+_AGENT_REASONS: frozenset[str] = frozenset(
+    {
+        "Kundenwunsch",
+        "Sensibles Thema Kreditablehnung",
+        "Systemfehler Kontodienst",
+        "Kunde nicht identifiziert",
+        "Keine gesicherte Antwort möglich",
+    }
+)
+_RESPONSE_FIELDS = frozenset({"answer", "escalate", "reason"})
+
 
 def _runtime_arn() -> str:
     """Read the AgentCore runtime ARN from SSM once per container."""
@@ -45,6 +56,20 @@ def _runtime_arn() -> str:
         )
         _RUNTIME_ARN = ssm.get_parameter(Name="/contact-center/runtime-arn")["Parameter"]["Value"]
     return _RUNTIME_ARN
+
+
+def _is_valid_agent_response(data: object) -> bool:
+    """Return whether decoded runtime data matches the exact agent contract."""
+    if not isinstance(data, dict) or set(data) != _RESPONSE_FIELDS:
+        return False
+    answer = data["answer"]
+    escalate = data["escalate"]
+    reason = data["reason"]
+    if not isinstance(answer, str) or not answer.strip() or type(escalate) is not bool:
+        return False
+    if not escalate:
+        return reason is None
+    return isinstance(reason, str) and reason in _AGENT_REASONS
 
 
 def _response(
@@ -81,26 +106,6 @@ def _response(
     }
 
 
-def _log_record(
-    *,
-    session_id: str,
-    customer_id: str | None,
-    escalate: bool,
-    reason: str,
-    outcome: str,
-    latency_ms: int,
-) -> dict[str, Any]:
-    """Build a structured, PII-safe turn log record (no answer text)."""
-    return {
-        "session_id": session_id,
-        "customer_id": customer_id,
-        "escalate": escalate,
-        "reason": reason,
-        "outcome": outcome,
-        "latency_ms": latency_ms,
-    }
-
-
 def _fallback_response(session_attributes: dict[str, Any], intent_name: str) -> dict[str, Any]:
     """Build the Close escalation fallback response (fail toward human)."""
     return _response(
@@ -121,20 +126,17 @@ def _log_turn(
     outcome: str,
     start: float,
 ) -> None:
-    """Emit the structured turn log; guarded so a logging failure can never raise."""
+    """Emit the structured, PII-safe turn log (no answer text); never raises."""
     try:
-        latency_ms = int((time.monotonic() - start) * 1000)
         _LOGGER.info(
-            json.dumps(
-                _log_record(
-                    session_id=session_id,
-                    customer_id=customer_id,
-                    escalate=escalate,
-                    reason=reason,
-                    outcome=outcome,
-                    latency_ms=latency_ms,
-                )
-            )
+            json.dumps({
+                "session_id": session_id,
+                "customer_id": customer_id,
+                "escalate": escalate,
+                "reason": reason,
+                "outcome": outcome,
+                "latency_ms": int((time.monotonic() - start) * 1000),
+            })
         )
     except Exception:  # noqa: BLE001 — logging must never break the never-raise contract
         pass
@@ -178,7 +180,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
         body = response["response"]
         raw = body.read() if hasattr(body, "read") else b"".join(body)
         data = json.loads(raw)
-        if not isinstance(data, dict) or "answer" not in data or not str(data["answer"]).strip():
+        if not _is_valid_agent_response(data):
             _log_turn(
                 session_id=runtime_session_id,
                 customer_id=customer_id,
@@ -188,8 +190,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
                 start=start,
             )
             return _fallback_response(session_attributes, intent_name)
-        escalate = data.get("escalate") is True
-        reason = str(data.get("reason") or "")
+        escalate = data["escalate"]
+        reason = data["reason"] or ""
         _log_turn(
             session_id=runtime_session_id,
             customer_id=customer_id,
@@ -201,7 +203,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:  # noqa: ARG
         return _response(
             session_attributes,
             intent_name,
-            answer=str(data["answer"]),
+            answer=data["answer"],
             escalate=escalate,
             reason=reason,
         )

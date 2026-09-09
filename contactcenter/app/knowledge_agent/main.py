@@ -10,7 +10,7 @@ from strands import Agent
 
 import banking
 from banking import ask_banking_agent
-from contract import escalation_log_record, parse_supervisor_output
+from contract import SupervisorResponse
 from knowledge import ask_knowledge_agent
 from shared import build_model
 
@@ -69,10 +69,10 @@ def invoke(payload: dict, context: object = None) -> dict:
     customer = payload.get("customer_id")
     context_line = f"Authentifizierter Kunde: {customer}\n" if customer else "Kein Kunde authentifiziert.\n"
     result = _supervisor(context_line + prompt)
-    response = parse_supervisor_output(str(result))
+    response = SupervisorResponse.from_supervisor_output(str(result))
     session_id = getattr(context, "session_id", None)
-    _LOGGER.info(json.dumps(escalation_log_record(session_id, customer, response), ensure_ascii=False))
-    return response
+    _LOGGER.info(json.dumps(response.to_log_record(session_id, customer), ensure_ascii=False))
+    return response.to_payload()
 
 
 if __name__ == "__main__":

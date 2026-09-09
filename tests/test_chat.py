@@ -43,7 +43,11 @@ def test_ask_returns_contract_and_sends_customer() -> None:
     """ask() returns the contract dict and forwards customer_id in the payload."""
     client = _FakeRuntime({"answer": "Saldo: 890,00 €", "escalate": False, "reason": None})
     response = chat.ask(
-        "Kontostand?", runtime_arn="arn:x", session_id="s" * 33, client=client, customer_id="KND-1003",
+        "Kontostand?",
+        runtime_arn="arn:x",
+        session_id="s" * 33,
+        client=client,
+        customer_id="KND-1003",
     )
     assert response["answer"] == "Saldo: 890,00 €"
     assert response["escalate"] is False

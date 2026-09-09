@@ -40,17 +40,26 @@ def get_parser() -> argparse.ArgumentParser:
     chat_parser = subparsers.add_parser("chat", help="Chat with the deployed contact-center agent.")
     chat_parser.add_argument("-q", "--question", default=None, help="Ask one question and exit.")
     chat_parser.add_argument(
-        "--customer", default="KND-1001", help="Authenticated customer id for banking questions.",
+        "--customer",
+        default="KND-1001",
+        help="Authenticated customer id for banking questions.",
     )
     chat_parser.add_argument(
-        "--connect", action="store_true", help="Go through the Amazon Connect front door instead of direct invoke.",
+        "--connect",
+        action="store_true",
+        help="Go through the Amazon Connect front door instead of direct invoke.",
     )
     eval_parser = subparsers.add_parser("eval", help="Score the golden set against the deployed agent.")
     eval_parser.add_argument(
-        "--threshold", type=float, default=1.0, help="Minimum item pass-rate; exit nonzero below it.",
+        "--threshold",
+        type=float,
+        default=1.0,
+        help="Minimum item pass-rate; exit nonzero below it.",
     )
     eval_parser.add_argument(
-        "--golden", default=None, help="Path to the golden set JSON (default: docs/eval/golden.json).",
+        "--golden",
+        default=None,
+        help="Path to the golden set JSON (default: docs/eval/golden.json).",
     )
     return parser
 

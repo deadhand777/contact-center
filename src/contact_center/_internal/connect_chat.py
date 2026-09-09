@@ -37,7 +37,6 @@ class TurnResult:
     messages: tuple[str, ...]
     transferred: bool = False
     ended: bool = False
-    timed_out: bool = False
 
 
 class ConnectConversation:
@@ -145,7 +144,7 @@ class ConnectConversation:
             if last_new is not None and time.monotonic() - last_new >= settle:
                 return TurnResult(tuple(messages))
             time.sleep(1)
-        return TurnResult(tuple(messages), timed_out=True)
+        return TurnResult(tuple(messages))
 
 
 def _print_turn(result: TurnResult) -> bool:

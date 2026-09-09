@@ -18,7 +18,16 @@ pytestmark = [
     ),
 ]
 
-HANDOFF_HINTS = ("kolleg", "mitarbeiter", "colleague", "human", "nicht beantworten", "can't answer", "cannot answer", "not able")
+HANDOFF_HINTS = (
+    "kolleg",
+    "mitarbeiter",
+    "colleague",
+    "human",
+    "nicht beantworten",
+    "can't answer",
+    "cannot answer",
+    "not able",
+)
 
 
 @pytest.fixture(scope="module")

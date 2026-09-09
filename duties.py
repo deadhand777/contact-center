@@ -22,7 +22,6 @@ WINDOWS = os.name == "nt"
 PTY = not WINDOWS and not CI
 MULTIRUN = os.environ.get("MULTIRUN", "0") == "1"
 PY_VERSION = f"{sys.version_info.major}{sys.version_info.minor}"
-PY_DEV = "315"
 
 
 def pyprefix(title: str) -> str:
@@ -54,7 +53,7 @@ def check(ctx: Context) -> None:
     """Check it all!"""
 
 
-@duty(nofail=PY_VERSION == PY_DEV)
+@duty
 def check_quality(ctx: Context) -> None:
     """Check the code quality."""
     ctx.run(
@@ -63,7 +62,7 @@ def check_quality(ctx: Context) -> None:
     )
 
 
-@duty(nofail=PY_VERSION == PY_DEV)
+@duty
 def check_docs(ctx: Context) -> None:
     """Check if the documentation builds correctly."""
     ctx.run(
@@ -72,7 +71,7 @@ def check_docs(ctx: Context) -> None:
     )
 
 
-@duty(nofail=PY_VERSION == PY_DEV)
+@duty
 def check_types(ctx: Context) -> None:
     """Check that the code is correctly typed."""
     py = f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -140,7 +139,7 @@ def coverage(ctx: Context) -> None:
     ctx.run(tools.coverage.html(rcfile="config/coverage.ini"))
 
 
-@duty(nofail=PY_VERSION == PY_DEV)
+@duty
 def test(ctx: Context, *cli_args: str) -> None:
     """Run the test suite."""
     os.environ["COVERAGE_FILE"] = f".coverage.{PY_VERSION}"

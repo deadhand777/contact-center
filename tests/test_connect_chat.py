@@ -66,11 +66,13 @@ def _conversation(items: list[dict]) -> tuple[connect_chat.ConnectConversation, 
 
 
 def test_wait_returns_ordered_messages_after_settle() -> None:
-    conversation, _ = _conversation([
-        {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "CUSTOMER", "Content": "hi"},
-        {"Id": "2", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
-        {"Id": "3", "Type": "MESSAGE", "ParticipantRole": "AGENT", "Content": "Wie kann ich helfen?"},
-    ])
+    conversation, _ = _conversation(
+        [
+            {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "CUSTOMER", "Content": "hi"},
+            {"Id": "2", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
+            {"Id": "3", "Type": "MESSAGE", "ParticipantRole": "AGENT", "Content": "Wie kann ich helfen?"},
+        ]
+    )
 
     result = conversation.wait(settle=0)
 
@@ -78,9 +80,11 @@ def test_wait_returns_ordered_messages_after_settle() -> None:
 
 
 def test_wait_owns_transcript_cursor_across_turns() -> None:
-    conversation, participant = _conversation([
-        {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
-    ])
+    conversation, participant = _conversation(
+        [
+            {"Id": "1", "Type": "MESSAGE", "ParticipantRole": "SYSTEM", "Content": "Willkommen"},
+        ]
+    )
     assert conversation.wait(settle=0).messages == ("Willkommen",)
     participant.items.append(
         {"Id": "2", "Type": "MESSAGE", "ParticipantRole": "AGENT", "Content": "Antwort"},
@@ -103,9 +107,11 @@ def test_wait_owns_transcript_cursor_across_turns() -> None:
     ],
 )
 def test_wait_returns_terminal_state_immediately(content_type: str, expected: object) -> None:
-    conversation, _ = _conversation([
-        {"Id": "1", "Type": "EVENT", "ContentType": content_type},
-    ])
+    conversation, _ = _conversation(
+        [
+            {"Id": "1", "Type": "EVENT", "ContentType": content_type},
+        ]
+    )
 
     assert conversation.wait() == expected
 
@@ -113,7 +119,7 @@ def test_wait_returns_terminal_state_immediately(content_type: str, expected: ob
 def test_wait_reports_timeout() -> None:
     conversation, _ = _conversation([])
 
-    assert conversation.wait(timeout=0) == connect_chat.TurnResult(messages=(), timed_out=True)
+    assert conversation.wait(timeout=0) == connect_chat.TurnResult(messages=())
 
 
 def test_start_conversation_passes_customer_attribute() -> None:

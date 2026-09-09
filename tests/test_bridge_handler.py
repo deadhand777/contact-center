@@ -2,26 +2,14 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import logging
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
-_HANDLER_PATH = Path(__file__).parent.parent / "infra" / "lambda" / "bridge" / "handler.py"
-
-
-def _load_handler() -> Any:
-    """Load the bridge handler without packaging it (SSM read is lazy)."""
-    spec = importlib.util.spec_from_file_location("bridge_handler", _HANDLER_PATH)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+from tests import load_module
+from tests.contract_cases import INVALID_CONTRACT_PAYLOADS, VALID_CONTRACT_PAYLOADS
 
 
 class _FakeBody:
@@ -66,9 +54,33 @@ def _lex_event(text: str, customer_id: str | None = "KND-1001") -> dict[str, Any
     }
 
 
+@pytest.mark.parametrize("payload", VALID_CONTRACT_PAYLOADS)
+def test_bridge_accepts_valid_agent_contract(payload: dict[str, object]) -> None:
+    """Every canonical valid agent response reaches the Lex adapter."""
+    module = load_module("bridge_handler")
+    module._agentcore = _FakeRuntime(payload)
+    module._RUNTIME_ARN = "arn:runtime"
+    result = module.handler(_lex_event("Frage"), None)
+    expected_action = "Close" if payload["escalate"] else "ElicitIntent"
+    assert result["sessionState"]["dialogAction"] == {"type": expected_action}
+    assert result["messages"][0]["content"] == payload["answer"]
+
+
+@pytest.mark.parametrize("payload", INVALID_CONTRACT_PAYLOADS)
+def test_bridge_rejects_invalid_agent_contract(payload: dict[str, object]) -> None:
+    """Every canonical invalid agent response uses the bridge fallback."""
+    module = load_module("bridge_handler")
+    module._agentcore = _FakeRuntime(payload)
+    module._RUNTIME_ARN = "arn:runtime"
+    result = module.handler(_lex_event("Frage"), None)
+    assert result["sessionState"]["dialogAction"] == {"type": "Close"}
+    assert result["sessionState"]["sessionAttributes"]["escalate"] == "true"
+    assert result["sessionState"]["sessionAttributes"]["reason"] == "Systemfehler"
+
+
 def test_answer_turn_maps_contract_to_elicit_intent() -> None:
     """A normal answer becomes ElicitIntent with escalate false in session attributes."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime({"answer": "2.543,17 EUR", "escalate": False, "reason": None})
     module._RUNTIME_ARN = "arn:runtime"
     result = module.handler(_lex_event("Kontostand?"), None)
@@ -86,7 +98,7 @@ def test_answer_turn_maps_contract_to_elicit_intent() -> None:
 
 def test_escalation_turn_closes_with_fulfilled_intent() -> None:
     """Escalations close the dialog, mark the intent fulfilled, and stringify reason."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime({"answer": "Ich verbinde Sie.", "escalate": True, "reason": "Kundenwunsch"})
     module._RUNTIME_ARN = "arn:runtime"
     result = module.handler(_lex_event("Mensch bitte"), None)
@@ -99,7 +111,7 @@ def test_escalation_turn_closes_with_fulfilled_intent() -> None:
 
 def test_runtime_failure_fails_toward_human() -> None:
     """Any runtime exception yields the Close escalation fallback, never a raise."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime(RuntimeError("boom"))
     module._RUNTIME_ARN = "arn:runtime"
     result = module.handler(_lex_event("Kontostand?"), None)
@@ -112,7 +124,7 @@ def test_runtime_failure_fails_toward_human() -> None:
 
 def test_malformed_runtime_payload_fails_toward_human() -> None:
     """A non-contract runtime payload yields the Close escalation fallback."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime({"unexpected": "shape"})
     module._RUNTIME_ARN = "arn:runtime"
     result = module.handler(_lex_event("Kontostand?"), None)
@@ -123,7 +135,7 @@ def test_malformed_runtime_payload_fails_toward_human() -> None:
 
 def test_missing_customer_attribute_still_answers() -> None:
     """Without customer_id the payload simply omits it (agent handles NO_CUSTOMER)."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime({"answer": "4,90 €", "escalate": False, "reason": None})
     module._RUNTIME_ARN = "arn:runtime"
     module.handler(_lex_event("Gebühren?", customer_id=None), None)
@@ -132,7 +144,7 @@ def test_missing_customer_attribute_still_answers() -> None:
 
 def test_null_intent_still_fails_toward_human() -> None:
     """Null intent (key present, None value) does not raise; returns Close escalation response."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime(RuntimeError("boom"))
     module._RUNTIME_ARN = "arn:runtime"
     event = {
@@ -153,7 +165,7 @@ def test_null_intent_still_fails_toward_human() -> None:
 
 def test_empty_answer_fails_toward_human() -> None:
     """Empty or whitespace-only answer is rejected; returns Close escalation response."""
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime({"answer": "  ", "escalate": False, "reason": None})
     module._RUNTIME_ARN = "arn:runtime"
     result = module.handler(_lex_event("Kontostand?"), None)
@@ -163,12 +175,18 @@ def test_empty_answer_fails_toward_human() -> None:
     assert result["sessionState"]["sessionAttributes"]["reason"] == "Systemfehler"
 
 
-def test_log_record_has_no_answer_and_keys_present() -> None:
-    module = _load_handler()
-    record = module._log_record(
-        session_id="connect-abc", customer_id="KND-1001",
-        escalate=False, reason="", outcome="answer", latency_ms=42,
-    )
+def test_log_record_has_no_answer_and_keys_present(caplog: pytest.LogCaptureFixture) -> None:
+    module = load_module("bridge_handler")
+    with caplog.at_level(logging.INFO):
+        module._log_turn(
+            session_id="connect-abc",
+            customer_id="KND-1001",
+            escalate=False,
+            reason="",
+            outcome="answer",
+            start=0.0,
+        )
+    record = json.loads(caplog.records[-1].getMessage())
     assert set(record) == {"session_id", "customer_id", "escalate", "reason", "outcome", "latency_ms"}
     assert record["session_id"] == "connect-abc"
     # The answer text must never appear in a log record.
@@ -177,7 +195,7 @@ def test_log_record_has_no_answer_and_keys_present() -> None:
 
 
 def test_handler_emits_correlation_log(caplog: pytest.LogCaptureFixture) -> None:
-    module = _load_handler()
+    module = load_module("bridge_handler")
     module._agentcore = _FakeRuntime({"answer": "2.543,17 EUR", "escalate": False, "reason": None})
     module._RUNTIME_ARN = "arn:runtime"
     with caplog.at_level(logging.INFO):

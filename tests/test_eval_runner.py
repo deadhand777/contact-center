@@ -20,12 +20,18 @@ def _write_golden(tmp_path: Path, items: list[dict]) -> str:
 
 
 def test_load_golden_parses_all_fields(tmp_path: Path) -> None:
-    path = _write_golden(tmp_path, [
-        {
-            "id": "kb-1", "category": "knowledge", "prompt": "Gebühr?",
-            "expected_facts": ["4,90"], "needs_citation": True,
-        },
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {
+                "id": "kb-1",
+                "category": "knowledge",
+                "prompt": "Gebühr?",
+                "expected_facts": ["4,90"],
+                "needs_citation": True,
+            },
+        ],
+    )
     items = eval_runner.load_golden(path)
     assert len(items) == 1
     item = items[0]
@@ -44,9 +50,12 @@ def test_load_golden_rejects_unknown_category(tmp_path: Path) -> None:
 
 
 def test_load_golden_rejects_unknown_reason_token(tmp_path: Path) -> None:
-    path = _write_golden(tmp_path, [
-        {"id": "x", "category": "escalation", "prompt": "?", "expect_reason": "Nope"},
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {"id": "x", "category": "escalation", "prompt": "?", "expect_reason": "Nope"},
+        ],
+    )
     with pytest.raises(ValueError, match="reason"):
         eval_runner.load_golden(path)
 
@@ -58,10 +67,13 @@ def test_load_golden_rejects_missing_required_field(tmp_path: Path) -> None:
 
 
 def test_load_golden_rejects_duplicate_ids(tmp_path: Path) -> None:
-    path = _write_golden(tmp_path, [
-        {"id": "dup", "category": "knowledge", "prompt": "a"},
-        {"id": "dup", "category": "knowledge", "prompt": "b"},
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {"id": "dup", "category": "knowledge", "prompt": "a"},
+            {"id": "dup", "category": "knowledge", "prompt": "b"},
+        ],
+    )
     with pytest.raises(ValueError, match="duplicate"):
         eval_runner.load_golden(path)
 
@@ -91,8 +103,11 @@ def test_check_knowledge_all_pass() -> None:
     result = eval_runner.check_item(item, resp)
     assert result.outcome == "pass"
     assert result.checks == {
-        "expected_facts": True, "citation": True, "number_format": True,
-        "escalate_flag": True, "reason_token": True,
+        "expected_facts": True,
+        "citation": True,
+        "number_format": True,
+        "escalate_flag": True,
+        "reason_token": True,
     }
 
 
@@ -112,32 +127,19 @@ def test_check_missing_citation_fails() -> None:
     assert result.outcome == "fail"
 
 
-def test_check_number_format_rejects_us_decimal() -> None:
-    item = _item()
-    resp = {"answer": "Das kostet 4.90 EUR", "escalate": False, "reason": None}
-    result = eval_runner.check_item(item, resp)
-    assert result.checks["number_format"] is False
-
-
-def test_check_number_format_accepts_grouped_german() -> None:
-    item = _item()
-    resp = {"answer": "Saldo 2.543,17 und 15.000,00", "escalate": False, "reason": None}
-    result = eval_runner.check_item(item, resp)
-    assert result.checks["number_format"] is True
-
-
-def test_check_number_format_rejects_long_us_decimal() -> None:
-    item = _item()
-    resp = {"answer": "Saldo 2543.17 EUR", "escalate": False, "reason": None}
-    result = eval_runner.check_item(item, resp)
-    assert result.checks["number_format"] is False
-
-
-def test_check_number_format_ignores_german_date() -> None:
-    item = _item()
-    resp = {"answer": "Gültig ab 01.07.2026 kostet es 4,90 €", "escalate": False, "reason": None}
-    result = eval_runner.check_item(item, resp)
-    assert result.checks["number_format"] is True
+@pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        ("Das kostet 4.90 EUR", False),
+        ("Saldo 2543.17 EUR", False),
+        ("Saldo 2.543,17 und 15.000,00", True),
+        ("Gültig ab 01.07.2026 kostet es 4,90 €", True),
+    ],
+)
+def test_check_number_format(answer: str, expected: bool) -> None:
+    resp = {"answer": answer, "escalate": False, "reason": None}
+    result = eval_runner.check_item(_item(), resp)
+    assert result.checks["number_format"] is expected
 
 
 def test_check_escalation_flag_and_reason() -> None:
@@ -158,8 +160,10 @@ def test_check_wrong_reason_token_fails() -> None:
 
 def test_check_refusal_pass_and_fail() -> None:
     item = _item(
-        category="guardrail", expect_refusal=True,
-        refusal_markers=("keine Anlageberatung",), forbidden_substrings=("kaufen Sie",),
+        category="guardrail",
+        expect_refusal=True,
+        refusal_markers=("keine Anlageberatung",),
+        forbidden_substrings=("kaufen Sie",),
     )
     good = {"answer": "Wir bieten keine Anlageberatung an.", "escalate": False, "reason": None}
     bad = {"answer": "kaufen Sie Aktie X", "escalate": False, "reason": None}
@@ -232,9 +236,18 @@ def test_run_eval_fails_closed_on_missing_runtime_arn(tmp_path: Path, monkeypatc
 
 
 def test_run_eval_all_pass_returns_zero(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = _write_golden(tmp_path, [
-        {"id": "kb", "category": "knowledge", "prompt": "Gebühr?", "expected_facts": ["4,90"], "needs_citation": True},
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {
+                "id": "kb",
+                "category": "knowledge",
+                "prompt": "Gebühr?",
+                "expected_facts": ["4,90"],
+                "needs_citation": True,
+            },
+        ],
+    )
     client = _FakeClient({"Gebühr": {"answer": "4,90 € [Quelle: x.md]", "escalate": False, "reason": None}})
     code = eval_runner.run_eval(path, threshold=1.0, client=client, runtime_arn="arn:runtime")
     assert code == 0
@@ -242,19 +255,25 @@ def test_run_eval_all_pass_returns_zero(tmp_path: Path, capsys: pytest.CaptureFi
 
 
 def test_run_eval_below_threshold_returns_one(tmp_path: Path) -> None:
-    path = _write_golden(tmp_path, [
-        {"id": "kb", "category": "knowledge", "prompt": "Gebühr?", "expected_facts": ["4,90"]},
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {"id": "kb", "category": "knowledge", "prompt": "Gebühr?", "expected_facts": ["4,90"]},
+        ],
+    )
     client = _FakeClient({"Gebühr": {"answer": "5,90 €", "escalate": False, "reason": None}})
     code = eval_runner.run_eval(path, threshold=1.0, client=client, runtime_arn="arn:runtime")
     assert code == 1
 
 
 def test_run_eval_isolates_item_errors(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = _write_golden(tmp_path, [
-        {"id": "boom", "category": "knowledge", "prompt": "explode", "expected_facts": ["4,90"]},
-        {"id": "ok", "category": "knowledge", "prompt": "Gebühr?", "expected_facts": ["4,90"]},
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {"id": "boom", "category": "knowledge", "prompt": "explode", "expected_facts": ["4,90"]},
+            {"id": "ok", "category": "knowledge", "prompt": "Gebühr?", "expected_facts": ["4,90"]},
+        ],
+    )
 
     class _PartlyBroken:
         def invoke_agent_runtime(self, **kwargs: Any) -> dict:
@@ -265,15 +284,24 @@ def test_run_eval_isolates_item_errors(tmp_path: Path, capsys: pytest.CaptureFix
 
     code = eval_runner.run_eval(path, threshold=1.0, client=_PartlyBroken(), runtime_arn="arn:runtime")
     out = capsys.readouterr().out
-    assert code == 1                      # boom errored -> below threshold
+    assert code == 1  # boom errored -> below threshold
     assert "ERRORED items: boom" in out
-    assert "OVERALL: 1/2 passed" in out   # proves 'ok' still ran and passed after boom errored
+    assert "OVERALL: 1/2 passed" in out  # proves 'ok' still ran and passed after boom errored
 
 
 def test_run_eval_binds_customer_id(tmp_path: Path) -> None:
-    path = _write_golden(tmp_path, [
-        {"id": "bal", "category": "balance", "prompt": "Kontostand?", "customer_id": "KND-1002", "expected_facts": ["-127,45"]},
-    ])
+    path = _write_golden(
+        tmp_path,
+        [
+            {
+                "id": "bal",
+                "category": "balance",
+                "prompt": "Kontostand?",
+                "customer_id": "KND-1002",
+                "expected_facts": ["-127,45"],
+            },
+        ],
+    )
     client = _FakeClient({"Kontostand": {"answer": "-127,45 €", "escalate": False, "reason": None}})
     eval_runner.run_eval(path, threshold=1.0, client=client, runtime_arn="arn:runtime")
     assert json.loads(client.calls[0]["payload"])["customer_id"] == "KND-1002"

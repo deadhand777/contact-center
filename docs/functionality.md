@@ -16,8 +16,9 @@ Every agent turn returns exactly:
 - `reason` — `null` when not escalating, otherwise one of the fixed routing
   tokens below.
 
-`contract.py` parses the supervisor's output into this shape and falls back
-safely (`escalate=false`) if the model ever returns non-contract text.
+`contract.py` parses the supervisor's output into this shape. Malformed output
+never reaches the customer as raw text; it becomes a human escalation with
+`reason="Keine gesicherte Antwort möglich"`.
 
 ## Knowledge Q&A (grounded + cited)
 

@@ -32,3 +32,6 @@ __pycache__/
 # local
 local/
 docs/superpowers/
+
+# agent session state
+.omc/
