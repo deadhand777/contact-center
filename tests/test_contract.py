@@ -75,3 +75,36 @@ def test_log_projection_omits_answer() -> None:
         "reason": None,
     }
     assert "2.543,17" not in json.dumps(record, ensure_ascii=False)
+
+
+def test_guardrail_refusal_reaches_the_customer() -> None:
+    """A guardrail's blocked message is an answer, not a contract violation."""
+    contract = load_module("contract")
+    blocked = "Diese Anfrage kann ich aus Compliance-Gründen nicht bearbeiten. Ich verbinde Sie gerne mit einem Mitarbeiter."
+    response = contract.SupervisorResponse.guardrail_refusal(blocked)
+    assert response.to_payload() == {"answer": blocked, "escalate": False, "reason": None}
+
+
+def test_empty_guardrail_message_falls_back_to_human() -> None:
+    """An empty blocked message cannot be shown, so it escalates."""
+    contract = load_module("contract")
+    response = contract.SupervisorResponse.guardrail_refusal("   ")
+    assert response.to_payload() == {
+        "answer": contract.FALLBACK_ANSWER,
+        "escalate": True,
+        "reason": "Keine gesicherte Antwort möglich",
+    }
+
+
+def test_rejection_is_logged_without_answer_text(caplog: pytest.LogCaptureFixture) -> None:
+    """A rejected response logs its cause and field names, never the model text."""
+    contract = load_module("contract")
+    text = '{"answer": "Ihr Saldo ist -127,45 €", "escalate": false, "reason": ""}'
+    with caplog.at_level("WARNING"):
+        response = contract.SupervisorResponse.from_supervisor_output(text)
+    assert response.escalate is True
+    record = json.loads(caplog.records[0].message)
+    assert record["event"] == "contract_rejected"
+    assert record["fields"] == ["answer", "escalate", "reason"]
+    assert "reason must be null" in record["cause"]
+    assert "-127,45" not in caplog.text

@@ -16,6 +16,8 @@ from shared import build_model
 
 _LOGGER = logging.getLogger(__name__)
 
+_GUARDRAIL_STOPS = frozenset({"guardrail_intervened", "content_filtered"})
+
 SUPERVISOR_PROMPT = """\
 Du bist der digitale Assistent der Musterbank und koordinierst zwei
 Spezialisten. Antworte auf Deutsch, oder auf Englisch wenn die Frage auf
@@ -69,7 +71,12 @@ def invoke(payload: dict, context: object = None) -> dict:
     customer = payload.get("customer_id")
     context_line = f"Authentifizierter Kunde: {customer}\n" if customer else "Kein Kunde authentifiziert.\n"
     result = _supervisor(context_line + prompt)
-    response = SupervisorResponse.from_supervisor_output(str(result))
+    if getattr(result, "stop_reason", None) in _GUARDRAIL_STOPS:
+        # The guardrail replaced the model turn with its own blocked message,
+        # which is plain text and cannot satisfy the JSON contract.
+        response = SupervisorResponse.guardrail_refusal(str(result))
+    else:
+        response = SupervisorResponse.from_supervisor_output(str(result))
     session_id = getattr(context, "session_id", None)
     _LOGGER.info(json.dumps(response.to_log_record(session_id, customer), ensure_ascii=False))
     return response.to_payload()

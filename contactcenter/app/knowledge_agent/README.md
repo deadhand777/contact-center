@@ -27,7 +27,7 @@ graph TB
 | `knowledge.py` | `ask_knowledge_agent` — retrieval-augmented product/fee/condition answers |
 | `banking.py` | `ask_banking_agent` + the no-arg `get_account_balance()` tool; identity via `ContextVar` |
 | `retrieval.py` | Knowledge Base query; emits `[Quelle: <source>]` citation markers (code, not prompt) |
-| `contract.py` | `SupervisorResponse.from_supervisor_output` — strict validation with a fixed human-escalation fallback; `to_payload()` / `to_log_record()` projections |
+| `contract.py` | `SupervisorResponse.from_supervisor_output` — strict validation with a fixed human-escalation fallback (rejections logged as `contract_rejected`); `guardrail_refusal` for guardrail-blocked turns; `to_payload()` / `to_log_record()` projections |
 | `shared.py` | Model + config (fail-closed SSM reads) |
 
 ## Contracts (do not casually change)

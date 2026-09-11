@@ -10,10 +10,11 @@
 [![pytest](https://img.shields.io/badge/pytest-tested-0A9EDC.svg?style=flat&logo=pytest&logoColor=white)](https://docs.pytest.org/)
 [![AWS](https://img.shields.io/badge/AWS-eu--central--1-FF9900.svg?style=flat&logo=amazonwebservices&logoColor=white)](https://aws.amazon.com/)
 
-An **agentic contact-center proof of concept** for a regulated German bank. It turns human-heavy chat handling into an autonomous assistant
-that answers product questions with citations, looks up authenticated account
-balances, and escalates cleanly to a human — all inside EU data residency
-(`eu-central-1`) under BaFin/DORA constraints.
+An agentic contact-center proof of concept for a regulated German bank. It turns
+human-heavy chat handling into an autonomous assistant that answers product
+questions with citations, looks up authenticated account balances, and escalates
+cleanly to a human, all inside EU data residency (`eu-central-1`) under
+BaFin/DORA constraints.
 
 ```mermaid
 graph LR
@@ -26,16 +27,18 @@ graph LR
 
 ## What it does
 
-- **Grounded knowledge Q&A** — product/fee/condition answers retrieved from a
+- **Grounded knowledge Q&A**: product/fee/condition answers retrieved from a
   curated corpus, always with a `[Quelle: …]` citation.
-- **Authenticated balance lookup** — the customer identity is bound server-side
+- **Authenticated balance lookup**: the customer identity is bound server-side
   (never chosen by the LLM); balances render in German format (`2.543,17 EUR`).
-- **Deterministic escalation** — a strict `{answer, escalate, reason}` contract;
-  `escalate=true` maps to a real Amazon Connect queue transfer, with fixed
-  German routing tokens.
-- **Compliance guardrail** — PII anonymization + investment-advice denial.
-- **Deterministic eval + observability** — `contact-center eval` scores a golden
-  set (14/14 passing); bridge and agent emit PII-safe, `session_id`-keyed logs.
+- **Deterministic escalation**: a strict `{answer, escalate, reason}` contract,
+  validated on both sides of the runtime call; `escalate=true` maps to a real
+  Amazon Connect queue transfer, with fixed German routing tokens. Output that
+  violates the contract fails toward a human instead of reaching the customer.
+- **Compliance guardrail**: PII anonymization plus investment-advice denial.
+- **Deterministic eval and observability**: `contact-center eval` scores a 14-item
+  golden set against the deployed agent (14/14, measured 2026-09-11); bridge and
+  agent emit PII-safe, `session_id`-keyed logs.
 
 ## Architecture at a glance
 
@@ -63,14 +66,14 @@ graph TB
   Sup --> GW
 ```
 
-Full detail — components, request flow, KB ingestion, security model — is in the
+Full detail (components, request flow, KB ingestion, security model) is in the
 [Architecture](docs/architecture.md) docs.
 
 ## Repository layout
 
 | Path | Contents |
 |------|----------|
-| `src/contact_center/` | CLI harness — `chat` (direct / `--connect`) and `eval` |
+| `src/contact_center/` | CLI harness: `chat` (direct / `--connect`) and `eval` |
 | `contactcenter/` | AgentCore project; supervisor + specialists in `app/knowledge_agent/` |
 | `infra/` | Hand-written CDK: `KnowledgeStack`, `ConnectStack`, Lambdas, contact flow |
 | `docs/corpus/` | Synthetic German bank documents ingested by the Knowledge Base |
@@ -80,8 +83,9 @@ Full detail — components, request flow, KB ingestion, security model — is in
 
 Read the deeper docs: [Use Case](docs/use-case.md) ·
 [Architecture](docs/architecture.md) · [Functionality](docs/functionality.md) ·
-[Tech Stack](docs/tech-stack.md). Component READMEs live in `infra/`,
-`contactcenter/`, and `contactcenter/app/knowledge_agent/`.
+[Tech Stack](docs/tech-stack.md) · [Domain Context](CONTEXT.md). Component
+READMEs live in `src/contact_center/`, `infra/`, `contactcenter/`, and
+`contactcenter/app/knowledge_agent/`.
 
 ## Development
 
@@ -103,14 +107,14 @@ Tasks run via `duty` through `scripts/make` (or `make` with `direnv allow`).
 Prereqs: Node 20+, uv, AWS credentials for the sandbox account (`eu-central-1`),
 `npm install -g @aws/agentcore`.
 
-1. `make setup` — Python env
-2. `cd infra && npm install && npx cdk deploy` — knowledge base, guardrail, gateway, balance Lambda, IAM
-3. `cd infra && npx cdk deploy ContactCenterConnect` — Connect instance, Lex pipe bot, escalation queue, bridge Lambda
+1. `make setup`: Python env
+2. `cd infra && npm install && npx cdk deploy`: knowledge base, guardrail, gateway, balance Lambda, IAM
+3. `cd infra && npx cdk deploy ContactCenterConnect`: Connect instance, Lex pipe bot, escalation queue, bridge Lambda
 4. Start the KB ingestion job
-5. `cd contactcenter && agentcore deploy -y` — deploy the supervisor agent on AgentCore Runtime.
+5. `cd contactcenter && agentcore deploy -y`: deploy the supervisor agent on AgentCore Runtime.
    Run this from `contactcenter/` (the scaffold root; its config is at `contactcenter/agentcore/agentcore.json`).
    After the first gateway deploy, publish its MCP URL to SSM `/contact-center/gateway-url` (from the deploy output).
-6. `aws ssm put-parameter --name /contact-center/runtime-arn ...` — publish the runtime ARN
+6. `aws ssm put-parameter --name /contact-center/runtime-arn ...`: publish the runtime ARN
 7. Attach the least-privilege policy (ARN at `/contact-center/agent-policy-arn`) to the runtime execution role:
    `aws iam attach-role-policy --role-name <runtime-execution-role> --policy-arn $(aws ssm get-parameter --name /contact-center/agent-policy-arn --query Parameter.Value --output text)`
 
