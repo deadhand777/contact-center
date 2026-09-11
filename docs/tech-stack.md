@@ -32,8 +32,13 @@ graph TB
 | Area | Choice | Why |
 |------|--------|-----|
 | Application & Lambdas | **Python 3.13+** | Team standard; Strands + Bedrock SDKs are Python-first |
-| Infrastructure | **TypeScript (AWS CDK v2)** | Typed, testable IaC; project rule: TS *only* for CDK |
+| Infrastructure | **TypeScript 6 (AWS CDK v2)** | Typed, testable IaC; project rule: TS *only* for CDK |
 | Agent deploy | **`@aws/agentcore` CLI** | First-class AgentCore Runtime packaging & deploy |
+
+The agent package under `contactcenter/app/knowledge_agent/` keeps its own
+`pyproject.toml` with `requires-python = ">=3.10"`. The `@aws/agentcore` CLI
+builds and deploys it into its own venv, separate from the root project. Only the
+root (CLI harness, tests, tooling) requires 3.13+.
 
 ## AI / agent layer
 
@@ -67,13 +72,13 @@ graph TB
 | **ruff** | Lint + format (`select = ALL`) |
 | **ty** | Type checking |
 | **pytest** | Tests (offline unit + gated live integration/eval) |
-| **Jest** | CDK template tests |
+| **Jest 30** (`ts-jest`) | CDK template tests in `infra/test/`, run via `npm test` |
 | **zensical** | Documentation site (this site), with mermaid diagrams |
 
 ## Configuration & residency
 
-- All resources in **`eu-central-1`**; runtime config in **SSM Parameter Store**
-  under `/contact-center/*`.
+- All resources in `eu-central-1`; runtime config in SSM Parameter Store under
+  `/contact-center/*`.
 - No secrets in the repo; no `.env` reads for credentials; AWS access via SSO
   profiles to the sandbox account only.
 

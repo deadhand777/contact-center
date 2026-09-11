@@ -7,7 +7,7 @@ deployed agent. Public API (`__init__.py`): `get_parser`, `main`.
 graph TB
   CLI["contact-center (cli.py)"]
   CLI -->|chat| Chat["chat.py<br/>direct invoke_agent_runtime"]
-  CLI -->|"chat --connect"| CC["connect_chat.py<br/>Connect Participant API + websocket"]
+  CLI -->|"chat --connect"| CC["connect_chat.py<br/>ConnectConversation + TurnResult"]
   CLI -->|eval| EV["eval_runner.py<br/>golden-set scoring"]
   Chat --> RT["AgentCore runtime"]
   CC --> CN["Amazon Connect"] --> RT
@@ -19,7 +19,7 @@ graph TB
 | Command | Module | What it does |
 |---------|--------|--------------|
 | `chat` | `_internal/chat.py` | Direct `invoke_agent_runtime` to the deployed agent (one-shot `-q` or REPL); `--customer` sets the authenticated id |
-| `chat --connect` | `_internal/connect_chat.py` | Drives a real Amazon Connect chat contact (Participant API + websocket presence), exercising the full front door |
+| `chat --connect` | `_internal/connect_chat.py` | Drives a real Amazon Connect chat contact (Participant API + websocket presence) through `ConnectConversation`, exercising the full front door |
 | `eval` | `_internal/eval_runner.py` | Scores the golden set against the deployed agent with deterministic checks; `RUN_EVAL=1` gated |
 
 ## Modules
@@ -28,7 +28,7 @@ graph TB
 |------|----------------|
 | `_internal/cli.py` | Argument parser + dispatch (`get_parser`, `main`) |
 | `_internal/chat.py` | `ask()` (invoke → response contract), `render()`, `run_chat()` |
-| `_internal/connect_chat.py` | Connect chat session lifecycle, transcript polling, settle-draining |
+| `_internal/connect_chat.py` | `ConnectConversation` (context manager owning the transcript cursor) + `TurnResult`; one `send()`/`wait()` per turn |
 | `_internal/eval_runner.py` | Golden-set model, deterministic scorer, report, orchestrator |
 | `_internal/aws.py` | SSM parameter names + `get_parameter`; region constant |
 | `_internal/debug.py` | `--debug-info` / version helpers |

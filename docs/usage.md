@@ -1,8 +1,8 @@
 # Usage & Testing Guide
 
-A step-by-step guide to running, testing, and exercising the service in its
-current state — deploy, direct agent calls, the Amazon Connect front door, the
-eval harness, and the live test suites.
+The steps below run in order: deploy the infrastructure and the agent, call the
+agent directly, go through the Amazon Connect front door, score the eval harness,
+and run the live test suites.
 
 ```mermaid
 graph LR
@@ -15,9 +15,9 @@ graph LR
 
 ## 0. Prerequisites
 
-- **uv** (Python 3.13+), **Node 20+**, `npm install -g @aws/agentcore`.
-- AWS access to the **sandbox** account, region **`eu-central-1`**, via an SSO
-  profile. Log in before any live step:
+- uv (Python 3.13+), Node 20+, `npm install -g @aws/agentcore`.
+- AWS access to the sandbox account, region `eu-central-1`, via an SSO profile.
+  Log in before any live step:
   ```bash
   aws sso login --profile <your-sso-profile>
   export AWS_PROFILE=<your-sso-profile>
@@ -47,7 +47,7 @@ cd contactcenter
 agentcore deploy -y                   # packages app/ and deploys the supervisor to AgentCore Runtime
 ```
 
-The deploy output prints the **runtime ARN** and the **gateway MCP URL**.
+The deploy output prints the runtime ARN and the gateway MCP URL.
 
 ## 3. Publish runtime config to SSM
 
@@ -69,7 +69,7 @@ The CLI harness resolves everything else from `/contact-center/*` at runtime.
 
 ## 4. Talk to the agent directly (`chat`)
 
-The fastest path — `invoke_agent_runtime` straight to the deployed agent.
+The fastest path: `invoke_agent_runtime` straight to the deployed agent.
 
 ```bash
 # one-shot knowledge question (expect the fee + a [Quelle: …] citation)
@@ -85,12 +85,12 @@ contact-center chat -q "Ich möchte mit einem Menschen sprechen."
 contact-center chat --customer KND-1002
 ```
 
-**Example prompts & expected behavior:**
+Example prompts and expected behavior:
 
 | Prompt | `--customer` | Expect |
 |--------|-------------|--------|
-| `Was kostet das Girokonto im Monat?` | — | `4,90 €` + `[Quelle: girokonto-gebuehren.md]` |
-| `Was kostet eine Echtzeitüberweisung?` | — | `0,50 €` + citation |
+| `Was kostet das Girokonto im Monat?` | (unset) | `4,90 €` + `[Quelle: girokonto-gebuehren.md]` |
+| `Was kostet eine Echtzeitüberweisung?` | (unset) | `0,50 €` + citation |
 | `Wie ist mein Kontostand?` | `KND-1001` | `2.543,17` and `15.000,00` |
 | `Wie ist mein Kontostand?` | `KND-1002` | `-127,45` |
 | `Ich möchte mit einem Menschen sprechen.` | any | `⚠ Übergabe an Mitarbeiter: Kundenwunsch` |
@@ -137,16 +137,25 @@ Then type turns and watch replies:
 - `Wie ist mein Kontostand?` → `2.543,17` (no transfer)
 - `Was kostet das Girokonto im Monat?` → `4,90` + `[Quelle: …]`
 - `Ich möchte mit einem Menschen sprechen.` → handoff message; the contact is
-  transferred to the **escalations** queue.
+  transferred to the escalations queue.
 
-The harness opens the chat websocket (presence), settle-drains the transcript so
-the Lex block is armed before sending, and prints agent/system messages.
+If the agent ever returns something that violates the response contract, the
+customer sees a fixed German fallback and the contact is handed off. The raw
+model text is never shown. See
+[Functionality](functionality.md#the-response-contract).
+
+Each turn runs through a `ConnectConversation` (a context manager that owns the
+contact, the websocket and the transcript cursor): `send()` posts the utterance,
+then `wait(timeout=45.0, settle=3.0)` returns a `TurnResult` with the new
+`messages` plus `transferred` / `ended` flags. The initial `wait()` also settles
+the transcript before the first message, because Connect only starts the flow
+once the websocket has subscribed, and anything sent before the Lex block arms is
+dropped. The conversation closes on exit, with errors suppressed.
 
 ## 6. Run the eval harness (`eval`)
 
-Scores the golden set (`docs/eval/golden.json`) against the **deployed** agent
-with deterministic checks. Gated by `RUN_EVAL=1` so it never runs in
-`make check`.
+Scores the golden set (`docs/eval/golden.json`) against the deployed agent with
+deterministic checks. Gated by `RUN_EVAL=1` so it never runs in `make check`.
 
 ```bash
 RUN_EVAL=1 contact-center eval                 # threshold 1.0 (default)
@@ -154,18 +163,36 @@ RUN_EVAL=1 contact-center eval --threshold 0.9 # looser gate
 RUN_EVAL=1 contact-center eval --golden path/to/other.json
 ```
 
-Expected output (current set passes 14/14):
+Output (measured 2026-09-11 against the deployed agent):
 
 ```
 Eval report
 ===========
   balance     escalate_flag  5/5
-  ...
+  balance     expected_facts 4/4
+  balance     number_format  5/5
+  balance     reason_token   5/5
+  escalation  escalate_flag  2/2
+  escalation  number_format  2/2
+  escalation  reason_token   2/2
+  guardrail   escalate_flag  2/2
+  guardrail   number_format  2/2
+  guardrail   reason_token   2/2
+  guardrail   refusal        2/2
   knowledge   citation       5/5
+  knowledge   escalate_flag  5/5
+  knowledge   expected_facts 5/5
+  knowledge   number_format  5/5
+  knowledge   reason_token   5/5
 OVERALL: 14/14 passed (100.0%)
 ```
 
 Exit code is `0` at/above threshold, `1` below.
+
+A failing item is not always a defect: the supervisor is a language model, and
+an off-contract response is rejected rather than shown. When an item fails,
+check CloudWatch for a `contract_rejected` log line. It names the validation rule
+that rejected the response and the fields it carried.
 
 ## 7. Run the test suites
 
@@ -186,7 +213,7 @@ AWS_PROFILE=<profile> RUN_INTEGRATION=1 uv run pytest -c config/pytest.ini -o ad
   -m integration --no-cov tests/test_connect_integration.py
 ```
 
-Live suites are **double-gated**: the `integration` marker *and* `RUN_INTEGRATION=1`.
+Live suites are double-gated: the `integration` marker and `RUN_INTEGRATION=1`.
 
 ## 8. Inspect observability
 
@@ -208,8 +235,8 @@ via `agentcore traces`; they take ~10 min to index after a deploy.
 | Symptom | Fix |
 |---------|-----|
 | `SSO session … expired` | `aws sso login --profile <profile>` |
-| `Cannot read /contact-center/runtime-arn …` | Deploy the agent and publish the ARN (step 3) |
+| `Cannot read /contact-center/runtime-arn …` | The harness collapses every config failure into this one message. Check the real cause first: `aws ssm get-parameter --name /contact-center/runtime-arn --region eu-central-1`. `ExpiredTokenException` → re-run `aws sso login`; `ParameterNotFound` → deploy the agent and publish the ARN (step 3) |
 | `Live eval is gated — set RUN_EVAL=1` | Prefix the command with `RUN_EVAL=1` |
-| `Failed to spawn: duty` | Prefix `PYTHON_VERSIONS="" python scripts/make …` |
+| `check-types` reports every third-party import as `unresolved-import` | `PYTHON_VERSIONS` points at a `.venvs/<version>` that `make setup` never populated. Leave it unset (the default) so tasks use `.venv`; never silence the diagnostics |
 | pytest ignores config | Add `-c config/pytest.ini` |
 | Connect chat never answers | Ensure `ConnectStack` deployed and the Lex bot alias built for both locales |

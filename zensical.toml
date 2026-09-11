@@ -20,6 +20,7 @@ nav = [
     { "Use Case" = "use-case.md" },
     { "Architecture" = "architecture.md" },
     { "Functionality" = "functionality.md" },
+    { "Domain Context" = "context.md" },
     { "Tech Stack" = "tech-stack.md" },
   ] },
   { "Guides" = [
