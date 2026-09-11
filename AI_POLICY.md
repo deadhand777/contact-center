@@ -7,6 +7,8 @@ We accept AI-*assisted* contributions, both for code and documentation, with the
 - Issues must be created before creating pull requests (unless there is already a relevant issue).
 - Issue and pull request templates must be followed.
 - Comments (including bodies) in issues and pull requests must be written by humans. If you use LLMs to translate from one language to another, please include your original comment and the translated one.
-- Git commit messages must be written by humans, in English. If you cannot write English, please state so in the pull request body and we will write the commit messages ourselves.
+- Git commit messages must be in English. They may be AI-assisted, provided a human reviews and approves the message before committing and the assistant is credited with a `Co-Authored-By:` trailer. If you cannot write English, please state so in the pull request body and we will write the commit messages ourselves.
 
 Failure to comply with any of these requirements will result in issues or pull requests being closed immediately without comment. Repeated violations of this policy will result in a ban of the offending accounts/identities from contributing to this project and any related project from the same author/organization.
+
+> **Template divergence.** This file comes from the [`pawamoy/copier-uv`](https://github.com/pawamoy/copier-uv) template, whose version forbids AI-written commit messages outright. The commit-message rule above is a deliberate change for this repository (see issue #11). Re-apply it after any `copier update` that reverts this file.
