@@ -131,7 +131,7 @@ export class KnowledgeStack extends cdk.Stack {
       },
     });
 
-    const balanceFn = new lambda.Function(this, 'BalanceFunction', {
+    new lambda.Function(this, 'BalanceFunction', {
       runtime: lambda.Runtime.PYTHON_3_13,
       handler: 'handler.handler',
       code: lambda.Code.fromAsset('lambda/balance'),
@@ -172,7 +172,6 @@ export class KnowledgeStack extends cdk.Stack {
       '/contact-center/guardrail-version': 'DRAFT',
       '/contact-center/data-source-id': dataSource.attrDataSourceId,
       '/contact-center/agent-policy-arn': agentPolicy.managedPolicyArn,
-      '/contact-center/balance-fn-arn': balanceFn.functionArn,
     };
     Object.entries(params).forEach(([name, value], i) => {
       new ssm.StringParameter(this, `Param${i}`, {

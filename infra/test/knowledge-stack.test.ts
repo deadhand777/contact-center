@@ -76,10 +76,4 @@ describe('KnowledgeStack', () => {
       Handler: 'handler.handler',
     });
   });
-
-  test('balance lambda arn is published to ssm', () => {
-    template.hasResourceProperties('AWS::SSM::Parameter', {
-      Name: '/contact-center/balance-fn-arn',
-    });
-  });
 });
