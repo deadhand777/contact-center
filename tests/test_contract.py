@@ -80,7 +80,11 @@ def test_log_projection_omits_answer() -> None:
 def test_guardrail_refusal_reaches_the_customer() -> None:
     """A guardrail's blocked message is an answer, not a contract violation."""
     contract = load_module("contract")
-    blocked = "Diese Anfrage kann ich aus Compliance-Gründen nicht bearbeiten. Ich verbinde Sie gerne mit einem Mitarbeiter."
+    blocked = (
+        "Diese Anfrage kann ich aus Compliance-Gründen nicht bearbeiten. "
+        "Eine Anlageberatung darf ich nicht geben. "
+        "Zu Ihren Konten, Gebühren und Produkten helfe ich Ihnen gerne weiter."
+    )
     response = contract.SupervisorResponse.guardrail_refusal(blocked)
     assert response.to_payload() == {"answer": blocked, "escalate": False, "reason": None}
 
