@@ -36,6 +36,17 @@ describe('KnowledgeStack', () => {
     });
   });
 
+  test('blocked messaging does not promise a handoff', () => {
+    const guardrail = Object.values(template.findResources('AWS::Bedrock::Guardrail'))[0];
+    const { BlockedInputMessaging, BlockedOutputsMessaging } = guardrail.Properties;
+    for (const message of [BlockedInputMessaging, BlockedOutputsMessaging]) {
+      // The supervisor returns a blocked turn with escalate=false, so the text
+      // must not announce a transfer that never happens.
+      expect(message).toContain('Compliance-Gr\u00fcnden');
+      expect(message).not.toMatch(/verbinde Sie|Mitarbeiter/);
+    }
+  });
+
   test('ssm parameters are published for the handoff', () => {
     for (const name of [
       '/contact-center/kb-id',

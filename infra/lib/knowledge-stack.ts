@@ -42,7 +42,7 @@ export class KnowledgeStack extends cdk.Stack {
         nonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT'],
       },
     });
-    vectorIndex.addResourceDependency(vectorBucket);
+    vectorIndex.addDependency(vectorBucket);
 
     const kbRole = new iam.Role(this, 'KnowledgeBaseRole', {
       assumedBy: new iam.ServicePrincipal('bedrock.amazonaws.com'),
@@ -105,10 +105,12 @@ export class KnowledgeStack extends cdk.Stack {
 
     const guardrail = new bedrock.CfnGuardrail(this, 'Guardrail', {
       name: 'contact-center-guardrail',
+      // The supervisor returns a blocked turn as a non-escalating answer, so this
+      // text must not announce a transfer that never happens.
       blockedInputMessaging:
-        'Diese Anfrage kann ich aus Compliance-Gründen nicht bearbeiten. Ich verbinde Sie gerne mit einem Mitarbeiter.',
+        'Diese Anfrage kann ich aus Compliance-Gründen nicht bearbeiten. Eine Anlageberatung darf ich nicht geben. Zu Ihren Konten, Gebühren und Produkten helfe ich Ihnen gerne weiter.',
       blockedOutputsMessaging:
-        'Diese Antwort kann ich aus Compliance-Gründen nicht geben. Ich verbinde Sie gerne mit einem Mitarbeiter.',
+        'Diese Antwort kann ich aus Compliance-Gründen nicht geben. Eine Anlageberatung ist mir nicht erlaubt. Zu Ihren Konten, Gebühren und Produkten helfe ich Ihnen gerne weiter.',
       sensitiveInformationPolicyConfig: {
         piiEntitiesConfig: [
           { type: 'EMAIL', action: 'ANONYMIZE' },
