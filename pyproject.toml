@@ -28,14 +28,10 @@ Discussions = "https://github.com/deadhand777/contact-center/discussions"
 contact-center = "contact_center:main"
 
 [tool.pdm.version]
-source = "call"
-getter = "scripts.get_version:get_version"
+source = "scm"
+fallback_version = "0.0.0"
 
 [dependency-groups]
-maintain = [
-    "git-changelog>=2.9.7",
-    "yore>=0.4.7",
-]
 ci = [
     "duty>=1.9",
     "pytest>=9.1.1",
@@ -56,7 +52,7 @@ docs = [
 ]
 
 [tool.uv]
-default-groups = ["maintain", "ci", "docs"]
+default-groups = ["ci", "docs"]
 
 [tool.uv.workspace]
 members = [
