@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -29,23 +28,6 @@ def pyprefix(title: str) -> str:
         prefix = f"(python{sys.version_info.major}.{sys.version_info.minor})"
         return f"{prefix:14}{title}"
     return title
-
-
-def _get_changelog_version() -> str:
-    changelog_version_re = re.compile(r"^## \[(\d+\.\d+\.\d+)\].*$")
-    with Path(__file__).parent.joinpath("CHANGELOG.md").open("r", encoding="utf8") as file:
-        return next(filter(bool, map(changelog_version_re.match, file))).group(1)  # ty: ignore[unresolved-attribute]
-
-
-@duty
-def changelog(ctx: Context, bump: str = "") -> None:
-    """Update the changelog in-place with latest commits.
-
-    Parameters:
-        bump: Bump option passed to git-changelog.
-    """
-    ctx.run(tools.git_changelog(bump=bump or None), title="Updating changelog")
-    ctx.run(tools.yore.check(bump=bump or _get_changelog_version()), title="Checking legacy code")
 
 
 @duty(pre=["check-quality", "check-types", "check-docs"])
